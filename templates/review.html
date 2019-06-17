@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Book Page
+{% endblock %}
+
+{% block main %}
+<h3>
+  {{ title }}
+  <small class="text-muted">Title</small>
+</h3>
+<h3>
+  {{ author }}
+  <small class="text-muted">Author</small>
+</h3>
+<h3>
+  {{ year }}
+  <small class="text-muted">Year</small>
+</h3>
+<h3>
+  {{ isbn }}
+  <small class="text-muted">ISBN</small>
+</h3>
+{% if rating %}
+<h3>
+  {{ rating }}
+  <small class="text-muted">Rating</small>
+</h3>
+{% endif %}
+{% if review %}
+<h3>
+  {{ review }}
+  <small class="text-muted">Review</small>
+</h3>
+{% endif %}
+{% endblock %}
