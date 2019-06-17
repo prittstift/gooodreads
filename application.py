@@ -56,6 +56,32 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/api/<string:isbn>",  methods=["GET"])
+@login_required
+def isbn_api(isbn):
+
+    # Make sure ISBN exists
+    isbn_search = db.execute("SELECT * FROM books WHERE isbn = :isbn", {"isbn": isbn}).fetchall()
+    if isbn_search == []:
+        return jsonify({"error": "Invalid isbn"}), 404
+
+    # Get all data
+    goodreads_key = "qAwQTfh7LVqk7dcYK0wulg"
+    res = requests.get("https://www.goodreads.com/book/review_counts.json",
+                       params={"key": goodreads_key, "isbns": isbn_search[0]["isbn"]})
+    average_rating = res.json()["books"][0]["average_rating"]
+    ratings_count = res.json()["books"][0]["work_ratings_count"]
+
+    return jsonify({
+        "title": isbn_search[0]["title"],
+        "author": isbn_search[0]["author"],
+        "year":  int(isbn_search[0]["year"]),
+        "isbn":  isbn_search[0]["isbn"],
+        "review_count":  ratings_count,
+        "average_score":  float(average_rating)
+    })
+
+
 @app.route("/book",  methods=["GET", "POST"])
 @login_required
 def book():
