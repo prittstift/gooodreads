@@ -4,38 +4,65 @@ from flask import redirect, render_template, session
 from functools import wraps
 
 
-def prepare_bookpage(rows, usernames, user_ids, review_possible):
-    book_id = rows[0]["id"]
-    isbn = rows[0]["isbn"]
-    title = rows[0]["title"]
-    author = rows[0]["author"]
-    year = rows[0]["year"]
-    ratings = []
-    for i in range(len(rows)):
-        ratings.append(rows[i]["rating"])
-    reviews = []
-    for i in range(len(rows)):
-        reviews.append(rows[i]["review"])
-
-    no_review = True
-    if reviews != []:
-        for review in reviews:
-            if review is not None:
-                no_review = False
-
-    session["isbn"] = []
-    session["isbn"].append(isbn)
-
-    session["book_id"] = []
-    session["book_id"].append(book_id)
+def prepare_bookpage(rows, rows_rev):
 
     goodreads_key = "qAwQTfh7LVqk7dcYK0wulg"
-    res = requests.get("https://www.goodreads.com/book/review_counts.json",
-                       params={"key": goodreads_key, "isbns": isbn})
 
-    average_rating = res.json()["books"][0]["average_rating"]
-    ratings_count = res.json()["books"][0]["work_ratings_count"]
-    return render_template("book.html", isbn=isbn, title=title, author=author, year=year, ratings=ratings, reviews=reviews, average_rating=average_rating, ratings_count=ratings_count, usernames=usernames, review_possible=review_possible, no_review=no_review)
+    class FoundBook:
+
+        def __init__(self, rows, rows_rev, i):
+            self.book_id = rows[i]["id"]
+            self.isbn = rows[i]["isbn"]
+            self.title = rows[i]["title"]
+            self.author = rows[i]["author"]
+            self.year = rows[i]["year"]
+            res = requests.get("https://www.goodreads.com/book/review_counts.json",
+                               params={"key": goodreads_key, "isbns": self.isbn})
+            self.average_rating = res.json()["books"][0]["average_rating"]
+            self.ratings_count = res.json()["books"][0]["work_ratings_count"]
+
+            review_possible = True
+            for j in range(len(rows_rev[i])):
+                if rows_rev[i][j] != []:
+                    if session["user_id"] == rows_rev[i][j]["user_id"]:
+                        review_possible = False
+            self.review_possible = review_possible
+
+            usernames = []
+            for j in range(len(rows_rev[i])):
+                usernames.append(rows_rev[i][j]["username"])
+            self.usernames = usernames
+
+            ratings = []
+            for j in range(len(rows_rev[i])):
+                ratings.append(rows_rev[i][j]["rating"])
+            self.ratings = ratings
+
+            reviews = []
+            for j in range(len(rows_rev[i])):
+                reviews.append(rows_rev[i][j]["review"])
+            self.reviews = reviews
+
+            no_review = True
+            if reviews != []:
+                for review in reviews:
+                    if review is not None:
+                        no_review = False
+            self.no_review = no_review
+
+    results = []
+    for i in range(len(rows)):
+        results.append(FoundBook(rows, rows_rev, i))
+
+    session["isbn"] = []
+    for result in results:
+        session["isbn"].append(result.isbn)
+
+    session["book_id"] = []
+    for result in results:
+        session["book_id"].append(result.book_id)
+
+    return render_template("book.html", results=results)
 
 
 def apology(message, code=400):

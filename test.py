@@ -39,30 +39,21 @@ Session(app)
 engine = create_engine(os.getenv("DATABASE_URL"))
 db = scoped_session(sessionmaker(bind=engine))
 
-rows = db.execute("SELECT * FROM books LEFT JOIN reviews ON reviews.book_id = books.id WHERE title LIKE CONCAT ('%', :title, '%')",
+rows = db.execute("SELECT * FROM books WHERE title LIKE CONCAT ('%', :title, '%')",
                   {"title": "Lady"}).fetchall()
+
+rows_rev = []
+for i in range(len(rows)):
+    rows_rev.append(db.execute("SELECT * FROM reviews JOIN users ON reviews.user_id = users.id WHERE book_id = :book_id",
+                               {"book_id": rows[i]["id"]}).fetchall())
 
 usernames = db.execute(
     "SELECT username FROM reviews JOIN users ON reviews.user_id = users.id WHERE book_id = :book_id", {"book_id": 11}).fetchall()
 
-user_ids = db.execute(
-    "SELECT user_id FROM reviews WHERE book_id = :book_id", {"book_id": rows[0]["id"]}).fetchall()
+user_ids = []
+for i in range(len(rows)):
+    user_ids.append(db.execute(
+        "SELECT user_id FROM reviews WHERE book_id = :book_id", {"book_id": rows[i]["id"]}).fetchall())
 
-for i in range(len(rows)):
-    book_id = rows[i]["id"]
-    print(book_id)
-    isbn = rows[i]["isbn"]
-    print(isbn)
-    title = rows[i]["title"]
-    print(title)
-    author = rows[i]["author"]
-    print(author)
-    year = rows[i]["year"]
-    print(year)
-
-ratings = []
-for i in range(len(rows)):
-    print(rows[i]["rating"])
-reviews = []
-for i in range(len(rows)):
-    print(rows[i]["review"])
+print(rows)
+print(rows_rev[1][0]["username"])

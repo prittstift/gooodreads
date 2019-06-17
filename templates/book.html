@@ -6,6 +6,7 @@
 
 {% block main %}
 <h3>Results</h3>
+{% for result in results %}
 <table class="table table-striped">
   <thead>
     <tr>
@@ -14,49 +15,59 @@
       <th scope="col">Year</th>
       <th scope="col">ISBN</th>
       <th scope="col">Goodreads's Rating</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>{{ author }}</td>
-      <td>{{ title }}</td>
-      <td>{{ year }}</td>
-      <td>{{ isbn }}</td>
-      <td>{{ average_rating }} ({{ ratings_count}} ratings)</td>
-    </tr>
-  </tbody>
-</table>
-
-{% if no_review == False %}
-<table class="table table-striped">
-  <thead>
-    <tr>
-      <th scope="col">#</th>
-      <th scope="col">Rating</th>
       <th scope="col">Review</th>
     </tr>
   </thead>
   <tbody>
-    {% for rating in ratings %}
     <tr>
-      <th>{{usernames[loop.index0][0]}}</th>
-      <td>{{ rating }}/5</td>
-      <td>{{ reviews[loop.index0] }}</td>
+      <td>{{ result.author }}</td>
+      <td>{{ result.title }}</td>
+      <td>{{ result.year }}</td>
+      <td>{{ result.isbn }}</td>
+      <td>{{ result.average_rating }} ({{ result.ratings_count}} ratings)</td>
+      <td>
+        <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#ReviewCollapse{{loop.index0}}" aria-expanded="false" aria-controls="ReviewCollapse{{loop.index0}}">Review</button>
+      </td>
     </tr>
-    {% endfor %}
   </tbody>
 </table>
-{% endif %}
 
-{% if  review_possible == True %}
-<form action="/book" method="post">
-    <div class="form-group">
-        <input autocomplete="off" autofocus class="form-control" name="rating" placeholder="Rate the book" type="number" min="1" max="5" step="1">
+
+
+<div class="collapse multi-collapse" id="ReviewCollapse{{loop.index0}}">
+      <div class="card card-body">
+        {% if result.no_review == False %}
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Rating</th>
+              <th scope="col">Review</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for rating in result.ratings %}
+            <tr>
+              <th>{{result.usernames[loop.index0]}}</th>
+              <td>{{ rating }}/5</td>
+              <td>{{ result.reviews[loop.index0] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+        {% if  result.review_possible == True %}
+        <form action="/book" method="post">
+            <div class="form-group">
+                <input autocomplete="off" autofocus class="form-control" name="rating" placeholder="Rate the book" type="number" min="1" max="5" step="1">
+            </div>
+            <div class="form-group">
+                <textarea class="form-control" name="review" placeholder="Write your review" rows="4"></textarea>
+            </div>
+            <button class="btn btn-primary" type="submit">Submit</button>
+        </form>
+        {% endif %}
+      </div>
     </div>
-    <div class="form-group">
-        <textarea class="form-control" name="review" placeholder="Write your review" rows="4"></textarea>
-    </div>
-    <button class="btn btn-primary" type="submit">Submit</button>
-</form>
-{% endif %}
+{% endfor %}
 {% endblock %}

@@ -42,19 +42,12 @@ db = scoped_session(sessionmaker(bind=engine))
 
 def query(rows):
 
-    usernames = db.execute(
-        "SELECT username FROM reviews JOIN users ON reviews.user_id = users.id WHERE book_id = :book_id", {"book_id": rows[0]["id"]}).fetchall()
+    rows_rev = []
+    for i in range(len(rows)):
+        rows_rev.append(db.execute("SELECT * FROM reviews JOIN users ON reviews.user_id = users.id WHERE book_id = :book_id",
+                                   {"book_id": rows[i]["id"]}).fetchall())
 
-    user_ids = db.execute(
-        "SELECT user_id FROM reviews WHERE book_id = :book_id", {"book_id": rows[0]["id"]}).fetchall()
-
-    review_possible = True
-    if user_ids != []:
-        for i in range(len(rows)):
-            if session["user_id"] == user_ids[i][0]:
-                review_possible = False
-
-    return prepare_bookpage(rows, usernames, user_ids, review_possible)
+    return prepare_bookpage(rows, rows_rev)
 
 
 @app.route("/",  methods=["GET"])
@@ -73,7 +66,7 @@ def book():
         if request.form.get("isbn"):
 
             # Query database for username
-            rows = db.execute("SELECT * FROM books  LEFT JOIN reviews ON reviews.book_id = books.id WHERE isbn LIKE CONCAT ('%', :isbn, '%')",
+            rows = db.execute("SELECT * FROM books WHERE isbn LIKE CONCAT ('%', :isbn, '%')",
                               {"isbn": request.form.get("isbn")}).fetchall()
 
             return query(rows)
@@ -82,7 +75,7 @@ def book():
         elif request.form.get("title"):
 
             # Query database for username
-            rows = db.execute("SELECT * FROM books LEFT JOIN reviews ON reviews.book_id = books.id WHERE title LIKE CONCAT ('%', :title, '%')",
+            rows = db.execute("SELECT * FROM books WHERE title LIKE CONCAT ('%', :title, '%')",
                               {"title": request.form.get("title")}).fetchall()
 
             return query(rows)
@@ -90,7 +83,7 @@ def book():
         elif request.form.get("author"):
 
             # Query database for username
-            rows = db.execute("SELECT * FROM books LEFT JOIN reviews ON reviews.book_id = books.id WHERE author LIKE CONCAT ('%', :author, '%')",
+            rows = db.execute("SELECT * FROM books WHERE author LIKE CONCAT ('%', :author, '%')",
                               {"author": request.form.get("author")}).fetchall()
 
             return query(rows)
@@ -110,7 +103,7 @@ def book():
                 if not result:
                     return apology("Something went wrong!", 400)
 
-                rows = db.execute("SELECT * FROM books LEFT JOIN reviews ON reviews.book_id = books.id WHERE id = :book_id",
+                rows = db.execute("SELECT * FROM books WHERE id = :book_id",
                                   {"book_id": book_id}).fetchall()
 
                 return query(rows)
