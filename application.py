@@ -1,4 +1,5 @@
 import os
+import requests
 
 from flask import Flask, jsonify, redirect, render_template, request, session
 from flask_session import Session
@@ -8,7 +9,7 @@ from tempfile import mkdtemp
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from helpers import apology, login_required
+from helpers import apology, login_required, prepare_bookpage
 
 app = Flask(__name__)
 
@@ -39,16 +40,83 @@ engine = create_engine(os.getenv("DATABASE_URL"))
 db = scoped_session(sessionmaker(bind=engine))
 
 
-@app.route("/")
+def query(rows):
+
+    usernames = db.execute(
+        "SELECT username FROM reviews JOIN users ON reviews.user_id = users.id WHERE book_id = :book_id", {"book_id": rows[0]["id"]}).fetchall()
+
+    user_ids = db.execute(
+        "SELECT user_id FROM reviews WHERE book_id = :book_id", {"book_id": rows[0]["id"]}).fetchall()
+
+    review_possible = True
+    if user_ids != []:
+        for i in range(len(rows)):
+            if session["user_id"] == user_ids[i][0]:
+                review_possible = False
+
+    return prepare_bookpage(rows, usernames, user_ids, review_possible)
+
+
+@app.route("/",  methods=["GET"])
 @login_required
 def index():
     return render_template("index.html")
 
 
-@app.route("/book")
+@app.route("/book",  methods=["GET", "POST"])
 @login_required
 def book():
-    return render_template("book.html")
+    # User reached route via POST (as by submitting a form via POST)
+    if request.method == "POST":
+
+        # Ensure username was submitted
+        if request.form.get("isbn"):
+
+            # Query database for username
+            rows = db.execute("SELECT * FROM books  LEFT JOIN reviews ON reviews.book_id = books.id WHERE isbn LIKE CONCAT ('%', :isbn, '%')",
+                              {"isbn": request.form.get("isbn")}).fetchall()
+
+            return query(rows)
+
+        # Ensure username was submitted
+        elif request.form.get("title"):
+
+            # Query database for username
+            rows = db.execute("SELECT * FROM books LEFT JOIN reviews ON reviews.book_id = books.id WHERE title LIKE CONCAT ('%', :title, '%')",
+                              {"title": request.form.get("title")}).fetchall()
+
+            return query(rows)
+
+        elif request.form.get("author"):
+
+            # Query database for username
+            rows = db.execute("SELECT * FROM books LEFT JOIN reviews ON reviews.book_id = books.id WHERE author LIKE CONCAT ('%', :author, '%')",
+                              {"author": request.form.get("author")}).fetchall()
+
+            return query(rows)
+
+        else:
+            if not request.form.get("rating") and not request.form.get("review"):
+                return apology("must provide isbn, title or author", 400)
+
+            else:
+
+                # Query database for username
+                book_id = session["book_id"][0]
+
+                result = db.execute("INSERT INTO reviews (book_id, user_id, rating, review) VALUES (:book_id, :user_id, :rating, :review)", {
+                                    "book_id": book_id, "user_id": session["user_id"], "rating": request.form.get("rating"), "review": request.form.get("review")})
+                db.commit()
+                if not result:
+                    return apology("Something went wrong!", 400)
+
+                rows = db.execute("SELECT * FROM books LEFT JOIN reviews ON reviews.book_id = books.id WHERE id = :book_id",
+                                  {"book_id": book_id}).fetchall()
+
+                return query(rows)
+
+    else:
+        return apology("must submit form via /search")
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -70,8 +138,8 @@ def login():
             return apology("must provide password", 400)
 
         # Query database for username
-        rows = db.execute("SELECT * FROM users WHERE username = :username",
-                          username=request.form.get("username"))
+        rows = db.execute("SELECT * FROM users WHERE username = :username;",
+                          {"username": request.form.get("username")}).fetchall()
 
         # Ensure username exists and password is correct
         if len(rows) != 1 or not check_password_hash(rows[0]["hash"], request.form.get("password")):
@@ -127,13 +195,14 @@ def register():
 
         # db.execute failure?
         result = db.execute(
-            "INSERT INTO users (username, hash) VALUES (:username, :hash)", username=username, hash=hash)
+            "INSERT INTO users (username, hash) VALUES (:username, :hash)", {"username": username, "hash": hash})
+        db.commit()
         if not result:
             return apology("Username already taken!", 400)
 
         # Query database for username
         rows = db.execute("SELECT * FROM users WHERE username = :username",
-                          username=username)
+                          {"username": username}).fetchall()
 
         # Remember which user has logged in
         session["user_id"] = rows[0]["id"]

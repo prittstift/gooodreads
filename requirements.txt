@@ -1,4 +1,9 @@
 Flask
 Flask-Session
-psycopg2
-SQLAlchemy
+sqlalchemy
+sqlalchemy.orm
+tempfile
+werkzeug.exceptions
+werkzeug.security
+requests
+os
